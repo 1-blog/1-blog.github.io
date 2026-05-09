@@ -1,8 +1,35 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="refresh" content="0; url=https://seriously-direct-unicorn.ngrok-free.app/">
   </head>
   <body>
   </body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <script>
+    async function redirect() {
+      const urls = [
+        "https://balibabu.duckdns.org",
+        "https://seriously-direct-unicorn.ngrok-free.app"
+      ];
+
+      for (const url of urls) {
+        try {
+          await fetch(url, { mode: "no-cors" });
+          window.location.href = url;
+          return;
+        } catch (e) {}
+      }
+
+      document.body.innerText = "All servers unreachable.";
+    }
+
+    redirect();
+  </script>
+</head>
+<body></body>
 </html>
