@@ -1,35 +1,266 @@
-<!-- <!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="refresh" content="0; url=https://seriously-direct-unicorn.ngrok-free.app/">
-  </head>
-  <body>
-  </body>
-</html> -->
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <script>
-    async function redirect() {
-      const urls = [
-        "https://balibabu.duckdns.org",
-        "https://seriously-direct-unicorn.ngrok-free.app"
-      ];
-
-      for (const url of urls) {
-        try {
-          await fetch(url, { mode: "no-cors" });
-          window.location.href = url;
-          return;
-        } catch (e) {}
-      }
-
-      document.body.innerText = "All servers unreachable.";
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio Showcase</title>
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --card-border: #30363d;
+      --text-main: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent-blue: #58a6ff;
+      --badge-green-bg: rgba(46, 160, 67, 0.15);
+      --badge-green-text: #3fb950;
+      --badge-green-border: rgba(46, 160, 67, 0.4);
+      --badge-gray-bg: rgba(110, 118, 129, 0.15);
+      --badge-gray-text: #8b949e;
+      --badge-gray-border: rgba(110, 118, 129, 0.4);
     }
 
-    redirect();
-  </script>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    header {
+      max-width: 1200px;
+      margin: 0 auto 32px auto;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .repo-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent-blue);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      word-break: break-word;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge.published {
+      background-color: var(--badge-green-bg);
+      color: var(--badge-green-text);
+      border: 1px solid var(--badge-green-border);
+    }
+
+    .badge.source {
+      background-color: var(--badge-gray-bg);
+      color: var(--badge-gray-text);
+      border: 1px solid var(--badge-gray-border);
+    }
+
+    .description {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .lang-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      background-color: var(--accent-blue);
+      margin-right: 4px;
+    }
+
+    .loader {
+      text-align: center;
+      color: var(--text-muted);
+      grid-column: 1 / -1;
+      font-size: 1.1rem;
+      padding: 40px;
+    }
+  </style>
 </head>
-<body></body>
+<body>
+
+  <header>
+    <h1 id="user-title">Projects</h1>
+    <p id="user-subtitle">Loading public repositories...</p>
+  </header>
+
+  <main id="repo-grid" class="repo-grid">
+    <div class="loader">Fetching projects from GitHub...</div>
+  </main>
+
+  <script>
+    // 1. DYNAMIC USERNAME DETECTION
+    function getUsername() {
+      // Allow override via URL query parameter (e.g. ?user=octocat)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('user')) {
+        return urlParams.get('user');
+      }
+
+      // Automatically extract username if hosted on "username.github.io"
+      const hostname = window.location.hostname;
+      if (hostname.endsWith('.github.io')) {
+        return hostname.split('.')[0];
+      }
+
+      // Fallback username for local development (localhost)
+      return 'keshav';
+    }
+
+    // 2. TARGET LINK DETERMINATION
+    function getTargetUrl(repo, username) {
+      // repo.has_pages indicates if GitHub Pages is active for this repository
+      if (repo.has_pages) {
+        // Root profile repository site
+        if (repo.name.toLowerCase() === `${username.toLowerCase()}.github.io`) {
+          return `https://${username}.github.io/`;
+        }
+        // Sub-path published page
+        return `https://${username}.github.io/${repo.name}/`;
+      }
+
+      // Not published -> fallback to source code repository on GitHub
+      return repo.html_url;
+    }
+
+    // 3. FETCH AND RENDER REPOSITORIES
+    async function initShowcase() {
+      const username = getUsername();
+      const grid = document.getElementById('repo-grid');
+      
+      document.getElementById('user-title').textContent = `${username}'s Projects`;
+      document.getElementById('user-subtitle').textContent = `Public repositories dynamically loaded for ${username}`;
+
+      try {
+        const response = await fetch(
+          `https://api.github.com/users/${username}/repos?sort=updated&per_page=100`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch repositories (HTTP ${response.status})`);
+        }
+
+        const repos = await response.json();
+        grid.innerHTML = ''; // Clear loading screen
+
+        if (repos.length === 0) {
+          grid.innerHTML = '<div class="loader">No public repositories found.</div>';
+          return;
+        }
+
+        repos.forEach(repo => {
+          // Skip forked repositories
+          if (repo.fork) return;
+
+          const isPublished = repo.has_pages;
+          const targetUrl = getTargetUrl(repo, username);
+
+          const card = document.createElement('a');
+          card.className = 'card';
+          card.href = targetUrl;
+          card.target = '_blank';
+          card.rel = 'noopener noreferrer';
+
+          card.innerHTML = `
+            <div>
+              <div class="card-header">
+                <span class="card-title">${repo.name}</span>
+                <span class="badge ${isPublished ? 'published' : 'source'}">
+                  ${isPublished ? 'Live Site' : 'GitHub'}
+                </span>
+              </div>
+              <p class="description">
+                ${repo.description || 'No description provided.'}
+              </p>
+            </div>
+            <div class="card-footer">
+              ${repo.language ? `<span><span class="lang-dot"></span>${repo.language}</span>` : ''}
+              <span>⭐ ${repo.stargazers_count}</span>
+              <span>🍴 ${repo.forks_count}</span>
+            </div>
+          `;
+
+          grid.appendChild(card);
+        });
+
+      } catch (error) {
+        grid.innerHTML = `<div class="loader" style="color: #f85149;">Error: ${error.message}</div>`;
+      }
+    }
+
+    initShowcase();
+  </script>
+</body>
 </html>
