@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portfolio Showcase</title>
+  <title>Repositories</title>
   <style>
     :root {
       --bg-color: #0d1117;
@@ -78,6 +78,20 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
 
+    /* Staggered entrance animation (removed after it finishes so hover still works) */
+    .card-enter {
+      opacity: 0;
+      transform: translateY(14px);
+      animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes cardIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -140,6 +154,7 @@
       margin-right: 4px;
     }
 
+    /* --- Loading / empty / error states --- */
     .loader {
       text-align: center;
       color: var(--text-muted);
@@ -147,17 +162,114 @@
       font-size: 1.1rem;
       padding: 40px;
     }
+
+    /* Lively top status bar shown while loading */
+    .loader-status {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--card-border);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loader-status .caret {
+      display: inline-block;
+      width: 8px;
+      color: var(--accent-blue);
+      animation: blink 1s steps(1) infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    /* Shimmering skeleton placeholder cards */
+    .skeleton-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: skeletonFade 0.4s ease both;
+    }
+
+    @keyframes skeletonFade {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .skeleton-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .skeleton {
+      position: relative;
+      overflow: hidden;
+      background-color: #21262d;
+      border-radius: 6px;
+    }
+
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.07),
+        transparent
+      );
+      animation: shimmer 1.4s infinite;
+    }
+
+    @keyframes shimmer {
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    .sk-title { height: 18px; width: 55%; }
+    .sk-badge { height: 16px; width: 72px; }
+    .sk-desc  { height: 13px; width: 100%; }
+    .sk-desc.short { width: 70%; }
+    .sk-foot  { height: 13px; width: 45%; }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1 id="user-title">Projects</h1>
-    <p id="user-subtitle">Loading public repositories...</p>
-  </header>
-
   <main id="repo-grid" class="repo-grid">
-    <div class="loader">Fetching projects from GitHub...</div>
+    <!-- The lively skeleton loader + status text are injected by initShowcase() -->
   </main>
 
   <script>
@@ -195,13 +307,74 @@
       return repo.html_url;
     }
 
-    // 3. FETCH AND RENDER REPOSITORIES
+    // 3. LOADING UI HELPERS
+    const STATUS_MESSAGES = [
+      'Waking up the servers',
+      'Talking to GitHub',
+      'Gathering repositories',
+      'Sorting your projects',
+      'Adding a little polish',
+      'Almost there'
+    ];
+
+    // Renders shimmering skeleton placeholder cards + a cycling status line.
+    function renderLoader(grid, count = 6) {
+      grid.innerHTML = '';
+
+      const status = document.createElement('div');
+      status.className = 'loader-status';
+      status.innerHTML =
+        '<span class="spinner"></span>' +
+        '<span id="status-text">Loading<span class="caret">_</span></span>';
+      grid.appendChild(status);
+
+      for (let i = 0; i < count; i++) {
+        const card = document.createElement('div');
+        card.className = 'skeleton-card';
+        card.innerHTML =
+          '<div class="skeleton-row">' +
+            '<div class="skeleton sk-title"></div>' +
+            '<div class="skeleton sk-badge"></div>' +
+          '</div>' +
+          '<div class="skeleton sk-desc"></div>' +
+          '<div class="skeleton sk-desc short"></div>' +
+          '<div style="flex-grow:1;"></div>' +
+          '<div class="skeleton sk-foot"></div>';
+        grid.appendChild(card);
+      }
+
+      return status;
+    }
+
+    // Cycles through friendly status messages until the returned stop() is called.
+    function startStatusCycle(statusEl) {
+      const textEl = statusEl.querySelector('#status-text');
+      let i = 0;
+      const setMsg = () => {
+        textEl.innerHTML =
+          STATUS_MESSAGES[i % STATUS_MESSAGES.length] +
+          '<span class="caret">_</span>';
+        i++;
+      };
+      setMsg();
+      const intervalId = setInterval(setMsg, 850);
+      return () => clearInterval(intervalId);
+    }
+
+    // Extracts the display-order number from a leading "#N" in the description.
+    // Returns null when the description has no such marker.
+    function getDisplayOrder(repo) {
+      const match = (repo.description || '').match(/^\s*#(\d+)/);
+      return match ? parseInt(match[1], 10) : null;
+    }
+
+    // 4. FETCH, SORT AND RENDER REPOSITORIES
     async function initShowcase() {
       const username = getUsername();
       const grid = document.getElementById('repo-grid');
-      
-      document.getElementById('user-title').textContent = `${username}'s Projects`;
-      document.getElementById('user-subtitle').textContent = `Public repositories dynamically loaded for ${username}`;
+
+      const statusEl = renderLoader(grid, 6);
+      const stopStatus = startStatusCycle(statusEl);
 
       try {
         const response = await fetch(
@@ -213,6 +386,22 @@
         }
 
         const repos = await response.json();
+
+        // Sort: repos whose description starts with "#N" come first in ascending
+        // numeric order. Repos without a marker keep their default (latest-first)
+        // order and appear after all numbered ones.
+        const ordered = repos
+          .map((repo, idx) => ({ repo, idx }))
+          .sort((a, b) => {
+            const an = getDisplayOrder(a.repo);
+            const bn = getDisplayOrder(b.repo);
+            if (an !== null && bn !== null) return an - bn;
+            if (an !== null) return -1;
+            if (bn !== null) return 1;
+            return a.idx - b.idx; // neither numbered -> keep original order
+          });
+
+        stopStatus();
         grid.innerHTML = ''; // Clear loading screen
 
         if (repos.length === 0) {
@@ -220,7 +409,7 @@
           return;
         }
 
-        repos.forEach(repo => {
+        ordered.forEach(({ repo }, i) => {
           // Skip forked repositories
           if (repo.fork) return;
 
@@ -228,7 +417,15 @@
           const targetUrl = getTargetUrl(repo, username);
 
           const card = document.createElement('a');
-          card.className = 'card';
+          card.className = 'card card-enter';
+          card.style.animationDelay = `${i * 0.05}s`;
+          // Remove the entrance class once it finishes so the hover lift works.
+          card.addEventListener('animationend', function handler(e) {
+            if (e.target !== card) return;
+            card.classList.remove('card-enter');
+            card.style.animationDelay = '';
+            card.removeEventListener('animationend', handler);
+          });
           card.href = targetUrl;
           card.target = '_blank';
           card.rel = 'noopener noreferrer';
@@ -256,6 +453,7 @@
         });
 
       } catch (error) {
+        stopStatus();
         grid.innerHTML = `<div class="loader" style="color: #f85149;">Error: ${error.message}</div>`;
       }
     }
