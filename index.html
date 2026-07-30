@@ -390,7 +390,7 @@
         // Sort: repos whose description starts with "#N" come first in ascending
         // numeric order. Repos without a marker keep their default (latest-first)
         // order and appear after all numbered ones.
-        const ordered = repos
+        const ordered = repos.filter(repo=>repo.full_name!=`${username}/${username}.github.io`)
           .map((repo, idx) => ({ repo, idx }))
           .sort((a, b) => {
             const an = getDisplayOrder(a.repo);
